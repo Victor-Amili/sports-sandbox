@@ -12,8 +12,8 @@ import {
   BarChart3,
   Calendar,
 } from "lucide-react";
-import { FRAMEWORKS, TODAY_MATCHES } from "./data/dummyData";
-import { analyzeMatch } from "./engine/filterEngine";
+import { FRAMEWORKS, TODAY_MATCHES } from "./dummyData";
+import { analyzeMatch } from "./filterEngine";
 
 const ICON_MAP = {
   Shield: Shield,
