@@ -1,47 +1,76 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Activity,
-  Brain,
-  ChevronDown,
-  Sparkles,
+  Scan,
   BarChart3,
-  Zap,
+  Brain,
   Settings,
+  Calendar,
+  Zap,
 } from "lucide-react";
 import { TODAY_MATCHES } from "./data/dummyData";
-import { analyzeWithAI } from "./services/aiService";
-import AIAnalysisResult from "./components/AIAnalysisResult";
+import { batchAnalyzeMatches } from "./engine/batchAnalyzer";
+import DailyScan from "./components/DailyScan";
+import AIAnalysisResult from "./components/AIAnalysisResult"; // Keep for deep-dive
+import { getTodaysFixtures, transformFixture } from "./services/footballApi";
 
 export default function App() {
-  const [selectedMatchId, setSelectedMatchId] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [useRealAI, setUseRealAI] = useState(false);
+  const [activeTab, setActiveTab] = useState("daily"); // 'daily' | 'deep'
+  const [scanResult, setScanResult] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [selectedMatchForDeepDive, setSelectedMatchForDeepDive] =
+    useState(null);
+  const [deepDiveResult, setDeepDiveResult] = useState(null);
 
-  const selectedMatch = TODAY_MATCHES.find(
-    (m) => m.id === Number(selectedMatchId),
-  );
-
-  const handleAnalyze = async () => {
-    if (!selectedMatch) return;
-    setLoading(true);
-    setResult(null);
-
-    // Simulate network delay for realism
-    await new Promise((r) => setTimeout(r, 800));
+  // ============================================
+  // THE DAILY SCAN — Batch run all frameworks
+  // ============================================
+  const runDailyScan = useCallback(async () => {
+    setIsScanning(true);
 
     try {
-      const aiResult = await analyzeWithAI(selectedMatch, useRealAI);
-      setResult(aiResult);
+      // Try to fetch real fixtures
+      const apiFixtures = await getTodaysFixtures();
+
+      // If API returns data, transform it. If empty/fails, fall back to dummy
+      const fixtures =
+        apiFixtures.length > 0
+          ? apiFixtures.map(transformFixture)
+          : TODAY_MATCHES;
+
+      const result = batchAnalyzeMatches(fixtures);
+      setScanResult(result);
+
+      // Save to localStorage
+      localStorage.setItem(
+        "predictor_daily_scan",
+        JSON.stringify({
+          ...result,
+          savedAt: new Date().toISOString(),
+        }),
+      );
     } catch (err) {
-      console.error(err);
-      // Fallback to local
-      const aiResult = await analyzeWithAI(selectedMatch, false);
-      setResult(aiResult);
+      console.warn("API failed, using dummy data:", err.message);
+      const result = batchAnalyzeMatches(TODAY_MATCHES);
+      setScanResult(result);
     } finally {
-      setLoading(false);
+      setIsScanning(false);
     }
-  };
+  }, []);
+
+  // ============================================
+  // DEEP DIVE — Single match, all frameworks ranked
+  // ============================================
+  const runDeepDive = useCallback(async (match) => {
+    setSelectedMatchForDeepDive(match);
+    setDeepDiveResult(null);
+    setActiveTab("deep");
+
+    // This would call the AI service with real API if toggled
+    const { analyzeWithAI } = await import("./services/aiService");
+    const result = await analyzeWithAI(match, false); // false = local engine
+    setDeepDiveResult(result);
+  }, []);
 
   return (
     <div className="min-h-screen bg-sp-black text-gray-100">
@@ -49,138 +78,125 @@ export default function App() {
       <header className="border-b border-gray-800 bg-sp-dark px-6 py-4 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <Activity className="w-8 h-8 text-sp-green" />
-              <Sparkles className="w-3 h-3 text-sp-yellow absolute -top-1 -right-1" />
-            </div>
+            <Activity className="w-8 h-8 text-sp-green" />
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white">
                 PREDICT<span className="text-sp-green">OR</span>
               </h1>
               <p className="text-xs text-sp-gray uppercase tracking-widest">
-                AI Framework Intelligence
+                Daily Structural Edge Detection
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 bg-sp-black rounded-lg p-1 border border-gray-800">
             <button
-              onClick={() => setUseRealAI(!useRealAI)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                useRealAI
-                  ? "border-sp-green bg-sp-green/10 text-sp-green"
-                  : "border-gray-700 text-sp-gray hover:border-gray-500"
+              onClick={() => setActiveTab("daily")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === "daily"
+                  ? "bg-sp-green text-sp-black"
+                  : "text-sp-gray hover:text-white"
               }`}
             >
-              <Brain className="w-3 h-3" />
-              {useRealAI ? "Live AI Mode" : "Local AI Mode"}
+              <Scan className="w-4 h-4" />
+              Daily Scan
             </button>
+            <button
+              onClick={() => setActiveTab("deep")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === "deep"
+                  ? "bg-sp-green text-sp-black"
+                  : "text-sp-gray hover:text-white"
+              }`}
+            >
+              <Brain className="w-4 h-4" />
+              Deep Dive
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 text-sm text-sp-gray">
+            <Calendar className="w-4 h-4" />
+            <span>
+              {new Date().toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </span>
           </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-10">
-        {/* Input Section */}
-        <div className="max-w-2xl mx-auto text-center mb-12">
-          <h2 className="text-3xl font-bold text-white mb-3">
-            Find the <span className="text-sp-green">Structural Edge</span>
-          </h2>
-          <p className="text-sp-gray mb-8">
-            Select a match. Our AI evaluates it against 4 proprietary frameworks
-            and tells you which structural imbalance — if any — exists.
-          </p>
-
-          <div className="bg-sp-card border border-gray-800 rounded-2xl p-2 flex items-center gap-2">
-            <div className="relative flex-1">
-              <select
-                value={selectedMatchId}
-                onChange={(e) => {
-                  setSelectedMatchId(e.target.value);
-                  setResult(null);
-                }}
-                className="w-full bg-sp-black border border-gray-700 rounded-xl px-4 py-3.5 text-white appearance-none focus:border-sp-green focus:outline-none cursor-pointer"
-              >
-                <option value="">Select today's match...</option>
-                {TODAY_MATCHES.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.home} vs {m.away} — {m.league}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-sp-gray absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-
-            <button
-              onClick={handleAnalyze}
-              disabled={!selectedMatch || loading}
-              className={`px-6 py-3.5 rounded-xl font-semibold flex items-center gap-2 transition-all ${
-                !selectedMatch || loading
-                  ? "bg-gray-800 text-gray-500 cursor-not-allowed"
-                  : "bg-sp-green text-sp-black hover:bg-sp-green-dim shadow-[0_0_20px_rgba(0,255,136,0.3)]"
-              }`}
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-sp-black border-t-transparent rounded-full animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4" />
-                  Run Analysis
-                </>
-              )}
-            </button>
-          </div>
-
-          {useRealAI && (
-            <div className="mt-3 p-3 rounded-lg bg-sp-yellow/10 border border-sp-yellow/30 text-xs text-sp-yellow text-left max-w-2xl mx-auto">
-              <strong>Live AI Mode:</strong> Uncomment the fetch block in{" "}
-              <code>aiService.js</code> and add your OpenAI API key. Until then,
-              it falls back to Local AI.
-            </div>
-          )}
-        </div>
-
-        {/* Results */}
-        {result && selectedMatch && (
-          <AIAnalysisResult result={result} match={selectedMatch} />
-        )}
-
-        {/* Empty State */}
-        {!result && !loading && (
-          <div className="max-w-2xl mx-auto grid grid-cols-2 gap-4 opacity-40">
-            <div className="bg-sp-card border border-gray-800 rounded-xl p-6 text-center">
-              <BarChart3 className="w-8 h-8 text-sp-green mx-auto mb-3" />
-              <div className="text-sm font-medium text-white">Perfect Game</div>
-              <div className="text-xs text-sp-gray">
-                Home fortress vs away rot
-              </div>
-            </div>
-            <div className="bg-sp-card border border-gray-800 rounded-xl p-6 text-center">
-              <Zap className="w-8 h-8 text-sp-red mx-auto mb-3" />
-              <div className="text-sm font-medium text-white">Total Chaos</div>
-              <div className="text-xs text-sp-gray">
-                Defensive collapse prediction
-              </div>
-            </div>
-            <div className="bg-sp-card border border-gray-800 rounded-xl p-6 text-center">
-              <Activity className="w-8 h-8 text-blue-400 mx-auto mb-3" />
-              <div className="text-sm font-medium text-white">
-                Corner Pressure
-              </div>
-              <div className="text-xs text-sp-gray">Failed attack volume</div>
-            </div>
-            <div className="bg-sp-card border border-gray-800 rounded-xl p-6 text-center">
-              <Settings className="w-8 h-8 text-sp-gray mx-auto mb-3" />
-              <div className="text-sm font-medium text-white">
-                Midfield Mire
-              </div>
-              <div className="text-xs text-sp-gray">Tactical stagnation</div>
-            </div>
-          </div>
+      <main className="max-w-5xl mx-auto px-6 py-8">
+        {activeTab === "daily" ? (
+          <DailyScan
+            scanResult={scanResult}
+            onRunScan={runDailyScan}
+            isScanning={isScanning}
+          />
+        ) : (
+          <DeepDiveView
+            match={selectedMatchForDeepDive}
+            result={deepDiveResult}
+            onSelectMatch={runDeepDive}
+            matches={TODAY_MATCHES}
+          />
         )}
       </main>
+    </div>
+  );
+}
+
+// ============================================
+// DEEP DIVE VIEW — Single match analyzer (your old UI)
+// ============================================
+function DeepDiveView({ match, result, onSelectMatch, matches }) {
+  const [selectedId, setSelectedId] = useState(match?.id || "");
+
+  if (!result) {
+    return (
+      <div className="max-w-2xl mx-auto text-center py-20">
+        <Brain className="w-12 h-12 text-sp-gray mx-auto mb-4" />
+        <h3 className="text-xl font-bold text-white mb-2">
+          Deep Dive Analysis
+        </h3>
+        <p className="text-sm text-sp-gray mb-6">
+          Select a match to run a full AI analysis across all 4 frameworks with
+          detailed reasoning.
+        </p>
+
+        <div className="bg-sp-card border border-gray-800 rounded-xl p-2 max-w-md mx-auto">
+          <select
+            value={selectedId}
+            onChange={(e) => {
+              const id = Number(e.target.value);
+              setSelectedId(id);
+              const m = matches.find((m) => m.id === id);
+              if (m) onSelectMatch(m);
+            }}
+            className="w-full bg-sp-black border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-sp-green focus:outline-none"
+          >
+            <option value="">Select a match...</option>
+            {matches.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.home} vs {m.away}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <button
+        onClick={() => onSelectMatch(null)}
+        className="text-sm text-sp-gray hover:text-white flex items-center gap-1"
+      >
+        ← Back to selector
+      </button>
+      <AIAnalysisResult result={result} match={match} />
     </div>
   );
 }

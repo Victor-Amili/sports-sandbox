@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Check, X, Minus, Trash2, Filter, BookOpen, DollarSign, Percent, Target, TrendingUp } from 'lucide-react';
 import { FRAMEWORKS, TODAY_MATCHES } from '../data/dummyData';
-import { analyzeMatch } from '../engines/filterEngine';
+import { analyzeMatch } from '../engine/filterEngine';
 
 export default function TradingLog({ trades, addTrade, updateResult, deleteTrade, stats, dailyPnL }) {
     const [showForm, setShowForm] = useState(false);
@@ -233,8 +233,8 @@ export default function TradingLog({ trades, addTrade, updateResult, deleteTrade
                                                 </div>
                                             ) : (
                                                 <span className={`px-2 py-1 rounded text-xs font-semibold uppercase ${trade.result === 'win' ? 'bg-sp-green/20 text-sp-green' :
-                                                        trade.result === 'loss' ? 'bg-sp-red/20 text-sp-red' :
-                                                            'bg-sp-yellow/20 text-sp-yellow'
+                                                    trade.result === 'loss' ? 'bg-sp-red/20 text-sp-red' :
+                                                        'bg-sp-yellow/20 text-sp-yellow'
                                                     }`}>
                                                     {trade.result}
                                                 </span>
