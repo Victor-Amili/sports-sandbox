@@ -1,369 +1,186 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import {
   Activity,
+  Brain,
+  ChevronDown,
+  Sparkles,
   BarChart3,
-  BookOpen,
-  Shield,
-  Flame,
-  Flag,
-  Minimize2,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  ChevronRight,
-  Calendar,
+  Zap,
+  Settings,
 } from "lucide-react";
-import { FRAMEWORKS, TODAY_MATCHES } from "./data/dummyData";
-import { analyzeMatch } from "./engines/filterEngine";
-import { useTradingLog } from "./hooks/useTradingLog";
-import TradingLog from "./components/TradingLog";
-
-const ICON_MAP = {
-  Shield: Shield,
-  Flame: Flame,
-  Flag: Flag,
-  Minimize2: Minimize2,
-};
+import { TODAY_MATCHES } from "./data/dummyData";
+import { analyzeWithAI } from "./services/aiService";
+import AIAnalysisResult from "./components/AIAnalysisResult";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState("analyzer"); // 'analyzer' | 'trading'
-  const [selectedFramework, setSelectedFramework] = useState("perfect_game");
-  const [expandedMatch, setExpandedMatch] = useState(null);
+  const [selectedMatchId, setSelectedMatchId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [useRealAI, setUseRealAI] = useState(false);
 
-  const { trades, addTrade, updateResult, deleteTrade, stats, dailyPnL } =
-    useTradingLog();
+  const selectedMatch = TODAY_MATCHES.find(
+    (m) => m.id === Number(selectedMatchId),
+  );
 
-  const analyses = useMemo(() => {
-    return TODAY_MATCHES.map((match) => analyzeMatch(match, selectedFramework));
-  }, [selectedFramework]);
+  const handleAnalyze = async () => {
+    if (!selectedMatch) return;
+    setLoading(true);
+    setResult(null);
 
-  const qualifiedMatches = analyses.filter((a) => a.allPassed);
-  const totalMatches = analyses.length;
-  const framework = FRAMEWORKS[selectedFramework.toUpperCase()];
-  const FrameworkIcon = ICON_MAP[framework.icon];
+    // Simulate network delay for realism
+    await new Promise((r) => setTimeout(r, 800));
+
+    try {
+      const aiResult = await analyzeWithAI(selectedMatch, useRealAI);
+      setResult(aiResult);
+    } catch (err) {
+      console.error(err);
+      // Fallback to local
+      const aiResult = await analyzeWithAI(selectedMatch, false);
+      setResult(aiResult);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-sp-black text-gray-100">
       {/* Header */}
-      <header className="border-b border-gray-800 bg-sp-dark px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+      <header className="border-b border-gray-800 bg-sp-dark px-6 py-4 sticky top-0 z-50">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Activity className="w-8 h-8 text-sp-green" />
+            <div className="relative">
+              <Activity className="w-8 h-8 text-sp-green" />
+              <Sparkles className="w-3 h-3 text-sp-yellow absolute -top-1 -right-1" />
+            </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white">
                 PREDICT<span className="text-sp-green">OR</span>
               </h1>
               <p className="text-xs text-sp-gray uppercase tracking-widest">
-                AI Sports Intelligence
+                AI Framework Intelligence
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1 bg-sp-black rounded-lg p-1 border border-gray-800">
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => setActiveTab("analyzer")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                activeTab === "analyzer"
-                  ? "bg-sp-green text-sp-black"
-                  : "text-sp-gray hover:text-white"
+              onClick={() => setUseRealAI(!useRealAI)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                useRealAI
+                  ? "border-sp-green bg-sp-green/10 text-sp-green"
+                  : "border-gray-700 text-sp-gray hover:border-gray-500"
               }`}
             >
-              <BarChart3 className="w-4 h-4" />
-              Analyzer
+              <Brain className="w-3 h-3" />
+              {useRealAI ? "Live AI Mode" : "Local AI Mode"}
             </button>
-            <button
-              onClick={() => setActiveTab("trading")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                activeTab === "trading"
-                  ? "bg-sp-green text-sp-black"
-                  : "text-sp-gray hover:text-white"
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              Trading Log
-              {stats.pending > 0 && (
-                <span className="bg-sp-red text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                  {stats.pending}
-                </span>
-              )}
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 text-sm text-sp-gray">
-            <Calendar className="w-4 h-4" />
-            <span>Aug 15, 2026</span>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        {activeTab === "analyzer" ? (
-          <>
-            {/* Stats Bar */}
-            <div className="grid grid-cols-3 gap-4 mb-8">
-              <StatCard
-                label="Matches Analyzed"
-                value={totalMatches}
-                icon={BarChart3}
-                color="text-blue-400"
-              />
-              <StatCard
-                label="Qualified Bets"
-                value={qualifiedMatches.length}
-                icon={CheckCircle}
-                color="text-sp-green"
-              />
-              <StatCard
-                label="Discarded"
-                value={totalMatches - qualifiedMatches.length}
-                icon={XCircle}
-                color="text-sp-red"
-              />
+      <main className="max-w-5xl mx-auto px-6 py-10">
+        {/* Input Section */}
+        <div className="max-w-2xl mx-auto text-center mb-12">
+          <h2 className="text-3xl font-bold text-white mb-3">
+            Find the <span className="text-sp-green">Structural Edge</span>
+          </h2>
+          <p className="text-sp-gray mb-8">
+            Select a match. Our AI evaluates it against 4 proprietary frameworks
+            and tells you which structural imbalance — if any — exists.
+          </p>
+
+          <div className="bg-sp-card border border-gray-800 rounded-2xl p-2 flex items-center gap-2">
+            <div className="relative flex-1">
+              <select
+                value={selectedMatchId}
+                onChange={(e) => {
+                  setSelectedMatchId(e.target.value);
+                  setResult(null);
+                }}
+                className="w-full bg-sp-black border border-gray-700 rounded-xl px-4 py-3.5 text-white appearance-none focus:border-sp-green focus:outline-none cursor-pointer"
+              >
+                <option value="">Select today's match...</option>
+                {TODAY_MATCHES.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.home} vs {m.away} — {m.league}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-sp-gray absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            {/* Framework Selector */}
-            <div className="mb-8">
-              <h2 className="text-sm font-semibold text-sp-gray uppercase tracking-wider mb-4">
-                Select Framework
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {Object.values(FRAMEWORKS).map((fw) => {
-                  const Icon = ICON_MAP[fw.icon];
-                  const isActive = selectedFramework === fw.id;
-                  return (
-                    <button
-                      key={fw.id}
-                      onClick={() => setSelectedFramework(fw.id)}
-                      className={`relative p-4 rounded-xl border transition-all duration-200 text-left group ${
-                        isActive
-                          ? "border-sp-green bg-sp-green/10 shadow-[0_0_20px_rgba(0,255,136,0.15)]"
-                          : "border-gray-800 bg-sp-card hover:border-gray-600"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <Icon
-                          className={`w-5 h-5 ${isActive ? "text-sp-green" : "text-gray-500"}`}
-                        />
-                        {isActive && (
-                          <div className="w-2 h-2 rounded-full bg-sp-green animate-pulse" />
-                        )}
-                      </div>
-                      <h3
-                        className={`font-semibold ${isActive ? "text-sp-green" : "text-white"}`}
-                      >
-                        {fw.name}
-                      </h3>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {fw.description}
-                      </p>
-                    </button>
-                  );
-                })}
+            <button
+              onClick={handleAnalyze}
+              disabled={!selectedMatch || loading}
+              className={`px-6 py-3.5 rounded-xl font-semibold flex items-center gap-2 transition-all ${
+                !selectedMatch || loading
+                  ? "bg-gray-800 text-gray-500 cursor-not-allowed"
+                  : "bg-sp-green text-sp-black hover:bg-sp-green-dim shadow-[0_0_20px_rgba(0,255,136,0.3)]"
+              }`}
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-sp-black border-t-transparent rounded-full animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4" />
+                  Run Analysis
+                </>
+              )}
+            </button>
+          </div>
+
+          {useRealAI && (
+            <div className="mt-3 p-3 rounded-lg bg-sp-yellow/10 border border-sp-yellow/30 text-xs text-sp-yellow text-left max-w-2xl mx-auto">
+              <strong>Live AI Mode:</strong> Uncomment the fetch block in{" "}
+              <code>aiService.js</code> and add your OpenAI API key. Until then,
+              it falls back to Local AI.
+            </div>
+          )}
+        </div>
+
+        {/* Results */}
+        {result && selectedMatch && (
+          <AIAnalysisResult result={result} match={selectedMatch} />
+        )}
+
+        {/* Empty State */}
+        {!result && !loading && (
+          <div className="max-w-2xl mx-auto grid grid-cols-2 gap-4 opacity-40">
+            <div className="bg-sp-card border border-gray-800 rounded-xl p-6 text-center">
+              <BarChart3 className="w-8 h-8 text-sp-green mx-auto mb-3" />
+              <div className="text-sm font-medium text-white">Perfect Game</div>
+              <div className="text-xs text-sp-gray">
+                Home fortress vs away rot
               </div>
             </div>
-
-            {/* Active Framework Info */}
-            <div className="mb-6 p-4 rounded-lg border border-sp-green/30 bg-sp-green/5 flex items-start gap-3">
-              <FrameworkIcon className="w-5 h-5 text-sp-green mt-0.5" />
-              <div>
-                <h3 className="font-semibold text-sp-green">
-                  {framework.name} Protocol Active
-                </h3>
-                <p className="text-sm text-gray-400 mt-1">
-                  Target:{" "}
-                  <span className="text-white font-mono">
-                    {framework.filters.map((f) => f.name).join(" → ")}
-                  </span>
-                </p>
+            <div className="bg-sp-card border border-gray-800 rounded-xl p-6 text-center">
+              <Zap className="w-8 h-8 text-sp-red mx-auto mb-3" />
+              <div className="text-sm font-medium text-white">Total Chaos</div>
+              <div className="text-xs text-sp-gray">
+                Defensive collapse prediction
               </div>
             </div>
-
-            {/* Match Cards */}
-            <div className="space-y-4">
-              <h2 className="text-sm font-semibold text-sp-gray uppercase tracking-wider mb-4">
-                Today's Fixtures — {framework.name}
-              </h2>
-
-              {TODAY_MATCHES.map((match, idx) => {
-                const analysis = analyses[idx];
-                const isExpanded = expandedMatch === match.id;
-                const isQualified = analysis.allPassed;
-
-                return (
-                  <div
-                    key={match.id}
-                    className={`rounded-xl border overflow-hidden transition-all duration-300 ${
-                      isQualified
-                        ? "border-sp-green/50 bg-sp-green/5"
-                        : "border-gray-800 bg-sp-card"
-                    }`}
-                  >
-                    <div
-                      className="p-5 cursor-pointer flex items-center justify-between"
-                      onClick={() =>
-                        setExpandedMatch(isExpanded ? null : match.id)
-                      }
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${
-                            isQualified
-                              ? "bg-sp-green text-sp-black"
-                              : "bg-gray-800 text-gray-500"
-                          }`}
-                        >
-                          {match.home[0]}
-                          {match.away[0]}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-white font-semibold">
-                              {match.home}
-                            </span>
-                            <span className="text-sp-gray">vs</span>
-                            <span className="text-white font-semibold">
-                              {match.away}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-sp-gray">
-                            <span>{match.league}</span>
-                            <span>•</span>
-                            <span>{match.time}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <div
-                            className={`text-sm font-bold ${isQualified ? "text-sp-green" : "text-sp-red"}`}
-                          >
-                            {analysis.recommendation}
-                          </div>
-                          <div className="text-xs text-sp-gray">
-                            {analysis.score}/{analysis.totalFilters} filters
-                          </div>
-                        </div>
-                        <div
-                          className={`w-16 h-16 rounded-full border-4 flex items-center justify-center ${
-                            analysis.confidence >= 80
-                              ? "border-sp-green"
-                              : analysis.confidence >= 50
-                                ? "border-sp-yellow"
-                                : "border-sp-red"
-                          }`}
-                        >
-                          <span className="text-sm font-bold">
-                            {analysis.confidence}%
-                          </span>
-                        </div>
-                        <ChevronRight
-                          className={`w-5 h-5 text-sp-gray transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                        />
-                      </div>
-                    </div>
-
-                    {isExpanded && (
-                      <div className="border-t border-gray-800 px-5 py-4 bg-sp-black/50">
-                        <div className="grid gap-3">
-                          {analysis.results.map((filter, i) => (
-                            <div
-                              key={filter.id}
-                              className={`flex items-center justify-between p-3 rounded-lg border ${
-                                filter.passed
-                                  ? "border-sp-green/30 bg-sp-green/5"
-                                  : "border-sp-red/30 bg-sp-red/5"
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <span
-                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                                    filter.passed
-                                      ? "bg-sp-green text-sp-black"
-                                      : "bg-sp-red text-white"
-                                  }`}
-                                >
-                                  {i + 1}
-                                </span>
-                                <div>
-                                  <div className="text-sm font-medium text-white">
-                                    {filter.name}
-                                  </div>
-                                  <div className="text-xs text-sp-gray">
-                                    {filter.detail}
-                                  </div>
-                                </div>
-                              </div>
-                              {filter.passed ? (
-                                <CheckCircle className="w-5 h-5 text-sp-green" />
-                              ) : (
-                                <XCircle className="w-5 h-5 text-sp-red" />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-
-                        {isQualified && (
-                          <div className="mt-4 p-3 rounded-lg bg-sp-green/10 border border-sp-green/50 flex items-center gap-3">
-                            <AlertTriangle className="w-5 h-5 text-sp-green" />
-                            <div>
-                              <div className="text-sm font-bold text-sp-green">
-                                BET SIGNAL: {analysis.betType}
-                              </div>
-                              <div className="text-xs text-sp-gray">
-                                All 6 structural filters passed. Proceed with
-                                caution.
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {!isQualified &&
-                          analysis.results.some(
-                            (r) => r.id === "f3" && !r.passed,
-                          ) && (
-                            <div className="mt-4 p-3 rounded-lg bg-sp-yellow/10 border border-sp-yellow/50 flex items-center gap-3">
-                              <AlertTriangle className="w-5 h-5 text-sp-yellow" />
-                              <div className="text-xs text-sp-yellow">
-                                Filter 3 (Motivation) failed. Equal motivation =
-                                NO BET per framework rules.
-                              </div>
-                            </div>
-                          )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="bg-sp-card border border-gray-800 rounded-xl p-6 text-center">
+              <Activity className="w-8 h-8 text-blue-400 mx-auto mb-3" />
+              <div className="text-sm font-medium text-white">
+                Corner Pressure
+              </div>
+              <div className="text-xs text-sp-gray">Failed attack volume</div>
             </div>
-          </>
-        ) : (
-          <TradingLog
-            trades={trades}
-            addTrade={addTrade}
-            updateResult={updateResult}
-            deleteTrade={deleteTrade}
-            stats={stats}
-            dailyPnL={dailyPnL}
-          />
+            <div className="bg-sp-card border border-gray-800 rounded-xl p-6 text-center">
+              <Settings className="w-8 h-8 text-sp-gray mx-auto mb-3" />
+              <div className="text-sm font-medium text-white">
+                Midfield Mire
+              </div>
+              <div className="text-xs text-sp-gray">Tactical stagnation</div>
+            </div>
+          </div>
         )}
       </main>
-    </div>
-  );
-}
-
-function StatCard({ label, value, icon: Icon, color }) {
-  return (
-    <div className="bg-sp-card border border-gray-800 rounded-xl p-4 flex items-center gap-4">
-      <div className={`p-3 rounded-lg bg-sp-black ${color}`}>
-        <Icon className="w-5 h-5" />
-      </div>
-      <div>
-        <div className="text-2xl font-bold text-white">{value}</div>
-        <div className="text-xs text-sp-gray uppercase tracking-wider">
-          {label}
-        </div>
-      </div>
     </div>
   );
 }
