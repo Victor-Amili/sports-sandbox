@@ -387,7 +387,6 @@ export function analyzeMatch(match, frameworkId) {
     betType: getBetType(frameworkId),
   };
 }
-
 function getBetType(frameworkId) {
   const map = {
     perfect_game: 'Home Win (DNB)',
