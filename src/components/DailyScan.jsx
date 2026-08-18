@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
-    Scan, Shield, Flame, Flag, Minimize2,
-    CheckCircle, Clock, Calendar, Zap,
-    TrendingUp, AlertTriangle, ChevronRight,
+    Scan, Shield, Flame, Flag, Minimize2, Lock,
+    CheckCircle, Clock, Zap,
+     AlertTriangle, ChevronRight,
     BarChart3, XCircle, RefreshCw, Brain
 } from 'lucide-react';
 import { FRAMEWORKS } from '../data/dummyData';
@@ -12,11 +12,14 @@ const ICON_MAP = {
     Flame: Flame,
     Flag: Flag,
     Minimize2: Minimize2,
+    Lock: Lock,
 };
 
 const FRAMEWORK_COLORS = {
     perfect_game: 'border-sp-green bg-sp-green/5 text-sp-green',
+    perfect_game_away: 'border-sp-green bg-sp-green/5 text-sp-green',
     total_chaos: 'border-sp-red bg-sp-red/5 text-sp-red',
+    total_lock: 'border-sp-gray bg-sp-gray/5 text-sp-gray',
     corner_pressure: 'border-blue-400 bg-blue-400/5 text-blue-400',
     midfield_mire: 'border-sp-gray bg-sp-gray/5 text-sp-gray',
 };

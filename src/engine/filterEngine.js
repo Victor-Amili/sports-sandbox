@@ -70,6 +70,136 @@ export function analyzeMatch(match, frameworkId) {
       if (f6) score++;
       break;
 
+    case "perfect_game_away":
+      // F1: Away 1.75 / Home concedes 1.2
+      const pga1 = match.awayGoalsAvg >= 1.75 && match.homeConcededAvg >= 1.2;
+      results.push({
+        id: "f1",
+        name: "1.75 / 1.2 Goals Ratio (Away)",
+        passed: pga1,
+        detail: `${match.awayGoalsAvg} away vs ${match.homeConcededAvg} home conceded`,
+      });
+      if (pga1) score++;
+
+      // F2: Road Warrior
+      const pga2 = match.awayUnbeatenStreak >= 4 && match.awayCleanSheets >= 2;
+      results.push({
+        id: "f2",
+        name: "Road Warrior Test",
+        passed: pga2,
+        detail: `${match.awayUnbeatenStreak}/5 unbeaten away, ${match.awayCleanSheets} CS`,
+      });
+      if (pga2) score++;
+
+      // F3: Away Motivation
+      const awayMot = match.awayMotivation || match.motivation;
+      const pga3 = awayMot === "high";
+      results.push({
+        id: "f3",
+        name: "Motivation Audit (Away)",
+        passed: pga3,
+        detail: awayMot === "equal" ? "Equal motivation = NO BET" : awayMot,
+      });
+      if (pga3) score++;
+
+      // F4: Away Injury Check
+      const awayInj = match.awayInjuries || [];
+      const pga4 = awayInj.length === 0;
+      results.push({
+        id: "f4",
+        name: "Injury Core Check (Away)",
+        passed: pga4,
+        detail: awayInj.length
+          ? `Away missing: ${awayInj.join(", ")}`
+          : "Away spine fit",
+      });
+      if (pga4) score++;
+
+      // F5: xG Away > Home
+      const pga5 = match.xGAway > match.xGHome;
+      results.push({
+        id: "f5",
+        name: "xG Verification (Away)",
+        passed: pga5,
+        detail: `xG: ${match.xGAway} away vs ${match.xGHome} home`,
+      });
+      if (pga5) score++;
+
+      // F6: Derby
+      const pga6 = !match.isDerby;
+      results.push({
+        id: "f6",
+        name: "Derby Exclusion",
+        passed: pga6,
+        detail: match.isDerby ? "DERBY - VOID" : "Not a derby",
+      });
+      if (pga6) score++;
+      break;
+
+    case "total_lock":
+      // F1: Combined xG <= 1.8
+      const tl1 = match.combinedXG <= 1.8;
+      results.push({
+        id: "f1",
+        name: "1.8 Combined xG Ceiling",
+        passed: tl1,
+        detail: `Combined: ${match.combinedXG}`,
+      });
+      if (tl1) score++;
+
+      // F2: Both kept CS in 3/5
+      const tl2 = match.homeCleanSheets >= 3 && match.awayCleanSheets >= 3;
+      results.push({
+        id: "f2",
+        name: "Clean Sheet Fortress",
+        passed: tl2,
+        detail: `Home: ${match.homeCleanSheets} CS, Away: ${match.awayCleanSheets} CS`,
+      });
+      if (tl2) score++;
+
+      // F3: Patient Buildup (no fast break, no attacking wings)
+      const tl3 = match.patientBuildup === true;
+      results.push({
+        id: "f3",
+        name: "Patient Buildup Filter",
+        passed: tl3,
+        detail: tl3 ? "Slow buildup / low block" : "Transition threat detected",
+      });
+      if (tl3) score++;
+
+      // F4: Both spines intact
+      const tl4 = match.bothSpinesIntact === true;
+      results.push({
+        id: "f4",
+        name: "Anchor Presence",
+        passed: tl4,
+        detail: tl4 ? "Both spines intact" : "Defensive anchor missing",
+      });
+      if (tl4) score++;
+
+      // F5: H2H Under 2.5
+      const tl5 = match.h2hUnder25 === true;
+      results.push({
+        id: "f5",
+        name: "H2H Under History",
+        passed: tl5,
+        detail: tl5 ? "Last 3 all Under 2.5" : "H2H had overs",
+      });
+      if (tl5) score++;
+
+      // F6: Dry Pitch
+      const tl6 = match.dryPitch === true;
+      results.push({
+        id: "f6",
+        name: "Dry Pitch Modifier",
+        passed: tl6,
+        detail: tl6
+          ? "Dry conditions = Green Light"
+          : "Rain forecast = chaos risk",
+      });
+      if (tl6) score++;
+      break;
+
     case "total_chaos":
       const c1 = match.combinedXG >= 3.0;
       results.push({
@@ -260,10 +390,13 @@ export function analyzeMatch(match, frameworkId) {
 
 function getBetType(frameworkId) {
   const map = {
-    perfect_game: "Home Win (DNB)",
-    total_chaos: "Over 2.5 Goals",
-    corner_pressure: "Over 9.5 Corners",
-    midfield_mire: "Under 8.5 Corners",
+    perfect_game: 'Home Win (DNB)',
+    perfect_game_away: 'Away Win (DNB)',
+    total_chaos: 'Over 2.5 Goals',
+    total_lock: 'Under 2.5 Goals',
+    corner_pressure: 'Over 9.5 Corners',
+    midfield_mire: 'Under 8.5 Corners',
   };
-  return map[frameworkId] || "Unknown";
+  return map[frameworkId] || 'Unknown';
 }
+
