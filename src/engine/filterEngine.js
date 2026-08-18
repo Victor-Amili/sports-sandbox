@@ -25,20 +25,20 @@ export function analyzeMatch(match, frameworkId) {
       if (f2) score++;
 
       // F3: Motivation
-      const f3 = match.motivation === "high";
+      const f3 = match.motivation === "high" || match.motivation === "equal";   
       results.push({
         id: "f3",
         name: "Motivation Audit",
         passed: f3,
         detail:
-          match.motivation === "equal"
-            ? "Equal motivation = NO BET"
+          match.motivation === "none"
+            ? "Low motivation = NO BET"
             : match.motivation,
       });
       if (f3) score++;
 
       // F4: Injury Core
-      const f4 = match.injuries.length === 0;
+      const f4 = match.injuries.length <= 4;
       results.push({
         id: "f4",
         name: "Injury Core Check",
@@ -93,18 +93,18 @@ export function analyzeMatch(match, frameworkId) {
 
       // F3: Away Motivation
       const awayMot = match.awayMotivation || match.motivation;
-      const pga3 = awayMot === "high";
+      const pga3 = awayMot === "high" || awayMot === "equal";
       results.push({
         id: "f3",
         name: "Motivation Audit (Away)",
         passed: pga3,
-        detail: awayMot === "equal" ? "Equal motivation = NO BET" : awayMot,
+        detail: awayMot === "none" ? "Low motivation = NO BET" : awayMot,
       });
       if (pga3) score++;
 
       // F4: Away Injury Check
       const awayInj = match.awayInjuries || [];
-      const pga4 = awayInj.length === 0;
+      const pga4 = awayInj.length <= 4;
       results.push({
         id: "f4",
         name: "Injury Core Check (Away)",
@@ -138,7 +138,7 @@ export function analyzeMatch(match, frameworkId) {
 
     case "total_lock":
       // F1: Combined xG <= 1.8
-      const tl1 = match.combinedXG <= 1.8;
+      const tl1 = match.combinedXG <= 2.0;
       results.push({
         id: "f1",
         name: "1.8 Combined xG Ceiling",
@@ -148,7 +148,7 @@ export function analyzeMatch(match, frameworkId) {
       if (tl1) score++;
 
       // F2: Both kept CS in 3/5
-      const tl2 = match.homeCleanSheets >= 3 && match.awayCleanSheets >= 3;
+      const tl2 = match.homeCleanSheets >= 2 && match.awayCleanSheets >= 2;
       results.push({
         id: "f2",
         name: "Clean Sheet Fortress",
@@ -257,10 +257,10 @@ export function analyzeMatch(match, frameworkId) {
       break;
 
     case "corner_pressure":
-      const co1 = match.homeCornerAvg + match.awayCornerAvg >= 11.0;
+      const co1 = match.homeCornerAvg + match.awayCornerAvg >= 10.0;
       results.push({
         id: "f1",
-        name: "11.0 Combined Avg",
+        name: "10.0 Combined Avg",
         passed: co1,
         detail: `Combined: ${(match.homeCornerAvg + match.awayCornerAvg).toFixed(1)}`,
       });
@@ -275,7 +275,7 @@ export function analyzeMatch(match, frameworkId) {
       });
       if (co2) score++;
 
-      const co3 = match.favShotsRank <= 5 && match.underdogBlocksRank <= 5;
+      const co3 = match.favShotsRank <= 6 && match.underdogBlocksRank <= 6;
       results.push({
         id: "f3",
         name: "Shot-to-Block",
@@ -284,7 +284,7 @@ export function analyzeMatch(match, frameworkId) {
       });
       if (co3) score++;
 
-      const co4 = match.underdogPossession < 42;
+      const co4 = match.underdogPossession < 45;
       results.push({
         id: "f4",
         name: "Low Block",
@@ -313,7 +313,7 @@ export function analyzeMatch(match, frameworkId) {
       break;
 
     case "midfield_mire":
-      const m1 = match.crossesRank >= 15; // Bottom 5 in a 20-team league
+      const m1 = match.crossesRank >= 13; // Bottom 5 in a 20-team league
       results.push({
         id: "f1",
         name: "Surgical Offense",
@@ -331,7 +331,7 @@ export function analyzeMatch(match, frameworkId) {
       });
       if (m2) score++;
 
-      const m3 = match.possession > 52;
+      const m3 = match.possession > 50;
       results.push({
         id: "f3",
         name: "Tiki-Taka",
@@ -358,7 +358,7 @@ export function analyzeMatch(match, frameworkId) {
       });
       if (m5) score++;
 
-      const m6 = match.h2hCornerAvg < 8;
+      const m6 = match.h2hCornerAvg < 9;
       results.push({
         id: "f6",
         name: "H2H Bore Factor",

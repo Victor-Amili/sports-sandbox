@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { batchAnalyzeMatches } from "../engine/batchAnalyzer";
 
-const STORAGE_KEY = "predictor_daily_scan_v2";
+const STORAGE_KEY = "predictor_daily_scan_v3";
 
 function getTodayString() {
   return new Date().toISOString().split("T")[0];
